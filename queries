@@ -1,0 +1,211 @@
+-- IPL SQL Portfolio Queries
+-- Database: ipl
+-- Tables: ipl_matches, ipl_ball_by_ball
+
+-- 1. Total matches
+SELECT COUNT(*) AS total_matches FROM ipl_matches;
+
+-- 2. Total deliveries
+SELECT COUNT(*) AS total_deliveries FROM ipl_ball_by_ball;
+
+-- 3. Matches per season
+SELECT YEAR(date) AS season, COUNT(*) AS matches
+FROM ipl_matches
+GROUP BY YEAR(date)
+ORDER BY season;
+
+-- 4. Total runs per season
+SELECT YEAR(m.date) AS season, SUM(b.total_runs) AS total_runs
+FROM ipl_matches m
+JOIN ipl_ball_by_ball b ON m.id = b.id
+GROUP BY YEAR(m.date)
+ORDER BY season;
+
+-- 5. Matches per city
+SELECT city, COUNT(*) AS matches
+FROM ipl_matches
+GROUP BY city
+ORDER BY matches DESC;
+
+-- 6. Most successful teams (total wins)
+SELECT winner, COUNT(*) AS wins
+FROM ipl_matches
+WHERE winner IS NOT NULL
+GROUP BY winner
+ORDER BY wins DESC;
+
+-- 7. Toss decision impact
+SELECT toss_decision, COUNT(*) AS count
+FROM ipl_matches
+GROUP BY toss_decision;
+
+-- 8. Matches won by toss winners
+SELECT COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ipl_matches) AS toss_match_win_pct
+FROM ipl_matches
+WHERE toss_winner = winner;
+
+-- 9. Team with highest margin of victory (runs)
+SELECT winner, MAX(result_margin) AS max_margin
+FROM ipl_matches
+WHERE result = 'runs'
+GROUP BY winner
+ORDER BY max_margin DESC;
+
+-- 10. Team with highest margin of victory (wickets)
+SELECT winner, MAX(result_margin) AS max_wicket_margin
+FROM ipl_matches
+WHERE result = 'wickets'
+GROUP BY winner
+ORDER BY max_wicket_margin DESC;
+
+-- 11. Most Player of the Match awards
+SELECT player_of_match, COUNT(*) AS awards
+FROM ipl_matches
+GROUP BY player_of_match
+ORDER BY awards DESC
+LIMIT 10;
+
+-- 12. Top run scorers
+SELECT batsman, SUM(batsman_runs) AS runs
+FROM ipl_ball_by_ball
+GROUP BY batsman
+ORDER BY runs DESC
+LIMIT 10;
+
+-- 13. Top wicket takers
+SELECT bowler, COUNT(*) AS wickets
+FROM ipl_ball_by_ball
+WHERE is_wicket = 1
+GROUP BY bowler
+ORDER BY wickets DESC
+LIMIT 10;
+
+-- 14. Top 6 hitters
+SELECT batsman, COUNT(*) AS sixes
+FROM ipl_ball_by_ball
+WHERE batsman_runs = 6
+GROUP BY batsman
+ORDER BY sixes DESC
+LIMIT 10;
+
+-- 15. Top strike rates (min 200 balls)
+SELECT batsman,
+       SUM(batsman_runs) AS runs,
+       COUNT(*) AS balls,
+       ROUND(SUM(batsman_runs) * 100.0 / COUNT(*), 2) AS strike_rate
+FROM ipl_ball_by_ball
+GROUP BY batsman
+HAVING COUNT(*) >= 200
+ORDER BY strike_rate DESC
+LIMIT 10;
+
+-- 16. Bowler economy rates (min 500 balls)
+SELECT bowler,
+       SUM(total_runs) AS runs_conceded,
+       COUNT(*) AS balls_bowled,
+       ROUND(SUM(total_runs) * 6.0 / COUNT(*), 2) AS economy
+FROM ipl_ball_by_ball
+GROUP BY bowler
+HAVING COUNT(*) >= 500
+ORDER BY economy ASC
+LIMIT 10;
+
+-- 17. Most dot balls bowled
+SELECT bowler, COUNT(*) AS dot_balls
+FROM ipl_ball_by_ball
+WHERE total_runs = 0
+GROUP BY bowler
+ORDER BY dot_balls DESC
+LIMIT 10;
+
+-- 18. Most dismissals by type
+SELECT dismissal_kind, COUNT(*) AS count
+FROM ipl_ball_by_ball
+WHERE is_wicket = 1
+GROUP BY dismissal_kind
+ORDER BY count DESC;
+
+-- 19. Close finishes (< 5 runs or < 1 wicket)
+SELECT *
+FROM ipl_matches
+WHERE (result = 'runs' AND result_margin <= 5)
+   OR (result = 'wickets' AND result_margin = 1);
+
+-- 20. Average runs per over
+SELECT over, ROUND(AVG(total_runs), 2) AS avg_runs
+FROM ipl_ball_by_ball
+GROUP BY over
+ORDER BY over;
+
+-- 21. Highest scoring matches
+SELECT m.id, m.team1, m.team2, SUM(b.total_runs) AS match_runs
+FROM ipl_matches m
+JOIN ipl_ball_by_ball b ON m.id = b.id
+GROUP BY m.id
+ORDER BY match_runs DESC
+LIMIT 10;
+
+-- 22. Lowest scoring matches
+SELECT m.id, m.team1, m.team2, SUM(b.total_runs) AS match_runs
+FROM ipl_matches m
+JOIN ipl_ball_by_ball b ON m.id = b.id
+GROUP BY m.id
+ORDER BY match_runs ASC
+LIMIT 10;
+
+-- 23. Top partnerships (batsman + non-striker runs together)
+SELECT batsman, non_striker, SUM(total_runs) AS partnership_runs
+FROM ipl_ball_by_ball
+GROUP BY batsman, non_striker
+ORDER BY partnership_runs DESC
+LIMIT 10;
+
+-- 24. Matches per venue
+SELECT venue, COUNT(*) AS matches
+FROM ipl_matches
+GROUP BY venue
+ORDER BY matches DESC;
+
+-- 25. Most matches umpired
+SELECT umpire1 AS umpire, COUNT(*) AS matches
+FROM ipl_matches
+GROUP BY umpire1
+UNION ALL
+SELECT umpire2, COUNT(*) 
+FROM ipl_matches
+GROUP BY umpire2
+ORDER BY COUNT(*) DESC;
+
+-- 26. Winning % by venue
+SELECT venue, winner, COUNT(*) AS wins
+FROM ipl_matches
+WHERE winner IS NOT NULL
+GROUP BY venue, winner
+ORDER BY venue, wins DESC;
+
+-- 27. Win ratio chasing vs defending
+SELECT toss_decision, COUNT(*) AS wins
+FROM ipl_matches
+WHERE toss_winner = winner
+GROUP BY toss_decision;
+
+-- 28. Top scoring overs
+SELECT over, SUM(total_runs) AS runs
+FROM ipl_ball_by_ball
+GROUP BY over
+ORDER BY runs DESC
+LIMIT 5;
+
+-- 29. Extras by type
+SELECT extras_type, SUM(extra_runs) AS total
+FROM ipl_ball_by_ball
+GROUP BY extras_type
+ORDER BY total DESC;
+
+-- 30. Most player dismissals (fielder)
+SELECT fielder, COUNT(*) AS dismissals
+FROM ipl_ball_by_ball
+WHERE is_wicket = 1 AND fielder IS NOT NULL
+GROUP BY fielder
+ORDER BY dismissals DESC
+LIMIT 10;
